@@ -66,18 +66,40 @@ def imgPalette(imgs, themes):
 
     plt.show()
 
+def getPixData(imgfile):
+    return cv.cvtColor(cv.imread(imgfile, 1), cv.COLOR_BGR2RGB)
 
-if __name__ == '__main__':
-    # imgfile = 'imgs/avatar_282x282.png'
-    # pixData = cv.imread(imgfile, 1)
-    # pixData = cv.cvtColor(pixData, cv.COLOR_BGR2RGB)
-    # imgPixInColorSpace(cv.resize(pixData, None, fx=0.2, fy=0.2))
+def testColorSpace():
+    imgfile = 'imgs/avatar_282x282.png'
+    pixData = getPixData(imgfile)
+    imgPixInColorSpace(cv.resize(pixData, None, fx=0.2, fy=0.2))
 
+def testMMCQ():
     imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
-    pixDatas = list(map(lambda f: cv.cvtColor(cv.imread(f, 1), cv.COLOR_BGR2RGB), imgs))
+    pixDatas = list(map(getPixData, imgs))
     maxColor = 7
 
     start  = time.process_time()
     themes = list(map(lambda d: MMCQ(d, maxColor).quantize(), pixDatas))
     print("Time cost: {0}".format(time.process_time() - start))
     imgPalette(pixDatas, themes)
+
+def doWhat():
+    pixData = getPixData('imgs/avatar_282x282.png')
+    theme = MMCQ(pixData, 16).quantize()
+    h, w, _ = pixData.shape
+
+    mask = np.zeros(pixData.shape, dtype=np.uint8)
+    def dist(a, b):
+        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+    for y in range(h):
+        for x in range(w):
+            p = pixData[y,x,:]
+            dists = list(map(lambda t: dist(p, t), theme))
+            mask[y,x,:] = np.array(theme[dists.index(min(dists))], np.uint8)
+    plt.subplot(121), plt.imshow(pixData)
+    plt.subplot(122), plt.imshow(mask)
+    plt.show()
+if __name__ == '__main__':
+    # testColorSpace()
+    # testMMCQ()
