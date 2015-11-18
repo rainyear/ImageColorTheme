@@ -3,6 +3,7 @@ from queue import PriorityQueue as PQueue
 from functools import reduce
 
 # PQueue lowest first!
+DEBUG = False
 
 class VBox(object):
     """
@@ -22,7 +23,7 @@ class VBox(object):
         sides         = list(map(lambda t: abs(t[0] - t[1]) + 1, ziped))
         self.vol      = reduce(lambda x, y: x*y, sides)
         self.mAxis    = sides.index(max(sides))
-        self.plane    = ziped[:].pop(ziped[self.mAxis])
+        self.plane    = ziped[:self.mAxis] + ziped[self.mAxis+1:]
         self.npixs    = self.population()
         self.priority = self.npixs * -1
     def population(self):
@@ -32,6 +33,11 @@ class VBox(object):
                 for b in range(self.b1, self.b2+1):
                     s += self.histo[MMCQ.getColorIndex(r, g, b)]
         return int(s)
+    def __lt__(self, vbox):    #实现<操作
+        return self.priority < vbox.priority
+    def contains(self, r, g, b):
+        # real r, g, b here
+        pass
 
 class MMCQ(object):
     """
@@ -82,26 +88,79 @@ class MMCQ(object):
         bmax = np.max(pixData[:,:,2]) >> self.rshift
         bmin = np.min(pixData[:,:,2]) >> self.rshift
 
-        print("Red range: {0}-{1}".format(rmin, rmax))
-        print("Green range: {0}-{1}".format(gmin, gmax))
-        print("Blue range: {0}-{1}".format(bmin, bmax))
+        if DEBUG:
+            print("Red range: {0}-{1}".format(rmin, rmax))
+            print("Green range: {0}-{1}".format(gmin, gmax))
+            print("Blue range: {0}-{1}".format(bmin, bmax))
         return VBox(rmin, rmax, gmin, gmax, bmin, bmax,self.pixHisto)
     def medianCutApply(self, vbox):
+        npixs = 0
         if vbox.mAxis == 0:
             # Red axis is largest
-            pass
+            plane = 0
+            for r in range(vbox.r1, vbox.r2+1):
+                for g in range(vbox.g1, vbox.g2+1):
+                    for b in range(vbox.b1, vbox.b2+1):
+                        h = vbox.histo[self.getColorIndex(r, g, b)]
+                        plane += h
+                        npixs += h
+                if npixs >= vbox.npixs / 2.:
+                    left = r - vbox.r1
+                    right = vbox.r2 - r
+                    if left >= right:
+                        r2 = int(max(vbox.r1, r - 1 - left / 2))
+                    else:
+                        r2 = int(min(vbox.r2 - 1, r + right / 2))
+                    vbox1 = VBox(vbox.r1, r2, vbox.g1, vbox.g2, vbox.b1, vbox.b2, vbox.histo)
+                    vbox2 = VBox(r2+1, vbox.r2, vbox.g1, vbox.g2, vbox.b1, vbox.b2, vbox.histo)
+                    return vbox1, vbox2
         elif vbox.mAxis == 1:
             # Green axis is largest
-            pass
+            for g in range(vbox.g1, vbox.g2+1):
+                plane = 0
+                for r in range(vbox.r1, vbox.r2+1):
+                    for b in range(vbox.b1, vbox.b2+1):
+                        h = vbox.histo[self.getColorIndex(r, g, b)]
+                        plane += h
+                        npixs += h
+                if npixs >= vbox.npixs / 2.:
+                    left = g - vbox.g1
+                    right = vbox.g2 - g
+                    if left >= right:
+                        g2 = int(max(vbox.g1, g - 1 - left / 2))
+                    else:
+                        g2 = int(min(vbox.g2 - 1, g + right / 2))
+                    vbox1 = VBox(vbox.r1, vbox.r2, vbox.g1, g2, vbox.b1, vbox.b2, vbox.histo)
+                    vbox2 = VBox(vbox.r1, vbox.r2, g2+1, vbox.g2, vbox.b1, vbox.b2, vbox.histo)
+                    return vbox1, vbox2
         else:
             # Blue axis is largest
-            pass
+            for b in range(vbox.b1, vbox.b2+1):
+                plane = 0
+                for r in range(vbox.r1, vbox.r2+1):
+                    for g in range(vbox.b1, vbox.b2+1):
+                        h = vbox.histo[self.getColorIndex(r, g, b)]
+                        plane += h
+                        npixs += h
+                if npixs >= vbox.npixs / 2.:
+                    left = b - vbox.b1
+                    right = vbox.b2 - b
+                    if left >= right:
+                        b2 = int(max(vbox.b1, b - 1 - left / 2))
+                    else:
+                        b2 = int(min(vbox.b2 - 1, b + right / 2))
+                    vbox1 = VBox(vbox.r1, vbox.r2, vbox.g1, vbox.g2, vbox.b1, b2, vbox.histo)
+                    vbox2 = VBox(vbox.r1, vbox.r2, vbox.g1, vbox.g2, b2+1, vbox.b2, vbox.histo)
+                    return vbox1, vbox2
     def iterCut(self, maxColor, boxQueue, vol=False):
         ncolors = 1
         niters  = 0
         while True:
-            vbox0 = boxQueue.get()
+            if ncolors >= maxColor:
+                break
+            vbox0 = boxQueue.get_nowait()[1]
             if vbox0.npixs == 0:
+                print("Vbox has no pixels")
                 boxQueue.put((vbox0.priority, vbox0))
                 continue
             vbox1, vbox2 = self.medianCutApply(vbox0)
@@ -114,13 +173,32 @@ class MMCQ(object):
                 if vol:
                     vbox2.priority *= vbox2.vol
                 boxQueue.put((vbox2.priority, vbox2))
-            if ncolors >= maxColor:
-                break
             niters += 1
             if niters >= self.MAX_ITERATIONS:
                 print("infinite loop; perhaps too few pixels!")
                 break
         return boxQueue
+    def boxAvgColor(self, vbox):
+        ntot = 0
+        mult = 1 << self.rshift
+        rsum = 0
+        gsum = 0
+        bsum = 0
+        for r in range(vbox.r1, vbox.r2+1):
+            for g in range(vbox.g1, vbox.g2+1):
+                for b in range(vbox.b1, vbox.b2+1):
+                    h = vbox.histo[self.getColorIndex(r, g, b)]
+                    ntot += h
+                    rsum += int(h * (r + 0.5) * mult)
+                    gsum += int(h * (g + 0.5) * mult)
+                    bsum += int(h * (b + 0.5) * mult)
+        avgs = []
+        if ntot == 0:
+            avgs = [vbox.r1 + vbox.r2 + 1, vbox.g1 + vbox.g2 + 1, vbox.b1 + vbox.b2 + 1] * mult / 2.
+        else:
+            avgs = [rsum, gsum, bsum] / ntot
+        return list(map(lambda x: int(x), avgs))
+
     def quantize(self):
         if self.h * self.w < self.maxColor:
             raise AttributeError("Image({0}x{1}) too small to be quantized".format(self.w, self.h))
@@ -135,7 +213,12 @@ class MMCQ(object):
 
         boxQueue = PQueue(self.maxColor)
         while not pOneQueue.empty():
-            vbox = pOneQueue.get()
+            vbox = pOneQueue.get()[1]
             vbox.priority *= vbox.vol
             boxQueue.put((vbox.priority, vbox))
-        boxQueue = self.iterCut(self.maxColor - popcolors, boxQueue, True)
+        boxQueue = self.iterCut(self.maxColor - popcolors + 1, boxQueue, True)
+
+        theme = []
+        while not boxQueue.empty():
+            theme.append(self.boxAvgColor(boxQueue.get()[1]))
+        return theme

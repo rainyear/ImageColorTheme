@@ -44,6 +44,7 @@ if __name__ == '__main__':
     pixData = cv.cvtColor(pixData, cv.COLOR_BGR2RGB)
 
     # imgPixInColorSpace(cv.resize(pixData, None, fx=0.2, fy=0.2))
-    maxColor = 5
-    mmcq = MMCQ(pixData, maxColor)
-    mmcq.quantize()
+    maxColor = 2
+    mmcq     = MMCQ(pixData, maxColor)
+    theme    = mmcq.quantize()
+    print(theme)
