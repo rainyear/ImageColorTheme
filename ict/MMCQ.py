@@ -192,11 +192,10 @@ class MMCQ(object):
                     rsum += int(h * (r + 0.5) * mult)
                     gsum += int(h * (g + 0.5) * mult)
                     bsum += int(h * (b + 0.5) * mult)
-        avgs = []
         if ntot == 0:
-            avgs = [vbox.r1 + vbox.r2 + 1, vbox.g1 + vbox.g2 + 1, vbox.b1 + vbox.b2 + 1] * mult / 2.
+            avgs = map(lambda x: x * mult / 2, [vbox.r1 + vbox.r2 + 1, vbox.g1 + vbox.g2 + 1, vbox.b1 + vbox.b2 + 1])
         else:
-            avgs = [rsum, gsum, bsum] / ntot
+            avgs = map(lambda x : x / ntot, [rsum, gsum, bsum])
         return list(map(lambda x: int(x), avgs))
 
     def quantize(self):
