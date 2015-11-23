@@ -8,7 +8,7 @@ import matplotlib.gridspec as gridspec
 import time
 
 from ict.MMCQ import MMCQ
-# from ict.OQ import OQ
+from ict.OQ import OQ
 
 def imgPixInColorSpace(pixData):
     fig = plt.figure()
@@ -66,7 +66,7 @@ def imgPalette(imgs, themes):
 
     plt.show()
 
-def getPixData(imgfile):
+def getPixData(imgfile='imgs/avatar_282x282.png'):
     return cv.cvtColor(cv.imread(imgfile, 1), cv.COLOR_BGR2RGB)
 
 def testColorSpace():
@@ -100,6 +100,16 @@ def doWhat():
     plt.subplot(121), plt.imshow(pixData)
     plt.subplot(122), plt.imshow(mask)
     plt.show()
+def testOQ():
+    imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
+    pixDatas = list(map(getPixData, imgs))
+    maxColor = 7
+
+    start  = time.process_time()
+    themes = list(map(lambda d: OQ(d, maxColor).quantize(), pixDatas))
+    print("Time cost: {0}".format(time.process_time() - start))
+    imgPalette(pixDatas, themes)
 if __name__ == '__main__':
     # testColorSpace()
     # testMMCQ()
+    testOQ()
