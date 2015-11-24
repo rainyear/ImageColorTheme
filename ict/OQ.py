@@ -88,8 +88,8 @@ class OQ(object):
         self.leafNum += 1
     def getColors(self, node):
         if node.isLeaf:
-            (r, g, b) = tuple(map(lambda n: int(n[0] / n[1]), zip([node.r, node.g, node.b], [node.n]*3)))
-            self.theme.append((r,g,b))
+            [r, g, b] = list(map(lambda n: int(n[0] / n[1]), zip([node.r, node.g, node.b], [node.n]*3)))
+            self.theme.append([r,g,b, node.n])
         else:
             for i in range(8):
                 if node.children[i] is not None:
@@ -102,5 +102,6 @@ class OQ(object):
             self.reduceTree()
             # print("leafNum = {0}".format(self.leafNum))
         self.getColors(self.octree)
-        print(len(self.theme))
-        return self.theme[:self.maxColor+1]
+        # print(len(self.theme))
+        self.theme = sorted(self.theme, key=lambda c: -1*c[1])
+        return list(map(lambda l: l[:-1],self.theme[:self.maxColor]))

@@ -9,7 +9,24 @@ import time
 
 from ict.MMCQ import MMCQ
 from ict.OQ import OQ
+from ict.KMeans import KMeans
 
+def doWhat():
+    pixData = getPixData('imgs/avatar_282x282.png')
+    theme = MMCQ(pixData, 16).quantize()
+    h, w, _ = pixData.shape
+
+    mask = np.zeros(pixData.shape, dtype=np.uint8)
+    def dist(a, b):
+        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+    for y in range(h):
+        for x in range(w):
+            p = pixData[y,x,:]
+            dists = list(map(lambda t: dist(p, t), theme))
+            mask[y,x,:] = np.array(theme[dists.index(min(dists))], np.uint8)
+    plt.subplot(121), plt.imshow(pixData)
+    plt.subplot(122), plt.imshow(mask)
+    plt.show()
 def imgPixInColorSpace(pixData):
     fig = plt.figure()
     gs = gridspec.GridSpec(1, 3)
@@ -39,30 +56,34 @@ def imgPixInColorSpace(pixData):
 
     plt.show()
 
-def imgPalette(imgs, themes):
+def imgPalette(imgs, themes, titles):
     N = len(imgs)
 
     fig = plt.figure()
-    gs  = gridspec.GridSpec(len(imgs), 2)
+    gs  = gridspec.GridSpec(len(imgs), len(themes)+1)
     print(N)
     for i in range(N):
-        theme = themes[i]
-        pale = np.zeros(imgs[i].shape, dtype=np.uint8)
-        h, w, _ = pale.shape
-        ph  = h / len(theme)
-        for y in range(h):
-            pale[y,:,:] = np.array(theme[int(y / ph)], dtype=np.uint8)
         im = fig.add_subplot(gs[i, 0])
         im.imshow(imgs[i])
         im.set_title("Image %s" % str(i+1))
         im.xaxis.set_ticks([])
         im.yaxis.set_ticks([])
 
-        pl = fig.add_subplot(gs[i, 1])
-        pl.imshow(pale)
-        pl.set_title("MMCQ Palette")
-        pl.xaxis.set_ticks([])
-        pl.yaxis.set_ticks([])
+        t = 1
+        for themeLst in themes:
+            theme = themeLst[i]
+            pale = np.zeros(imgs[i].shape, dtype=np.uint8)
+            h, w, _ = pale.shape
+            ph  = h / len(theme)
+            for y in range(h):
+                pale[y,:,:] = np.array(theme[int(y / ph)], dtype=np.uint8)
+            pl = fig.add_subplot(gs[i, t])
+            pl.imshow(pale)
+            pl.set_title(titles[t-1])
+            pl.xaxis.set_ticks([])
+            pl.yaxis.set_ticks([])
+
+            t += 1
 
     plt.show()
 
@@ -74,42 +95,39 @@ def testColorSpace():
     pixData = getPixData(imgfile)
     imgPixInColorSpace(cv.resize(pixData, None, fx=0.2, fy=0.2))
 
-def testMMCQ():
-    imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
-    pixDatas = list(map(getPixData, imgs))
-    maxColor = 7
-
+def testMMCQ(pixDatas, maxColor):
     start  = time.process_time()
     themes = list(map(lambda d: MMCQ(d, maxColor).quantize(), pixDatas))
-    print("Time cost: {0}".format(time.process_time() - start))
-    imgPalette(pixDatas, themes)
-
-def doWhat():
-    pixData = getPixData('imgs/avatar_282x282.png')
-    theme = MMCQ(pixData, 16).quantize()
-    h, w, _ = pixData.shape
-
-    mask = np.zeros(pixData.shape, dtype=np.uint8)
-    def dist(a, b):
-        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
-    for y in range(h):
-        for x in range(w):
-            p = pixData[y,x,:]
-            dists = list(map(lambda t: dist(p, t), theme))
-            mask[y,x,:] = np.array(theme[dists.index(min(dists))], np.uint8)
-    plt.subplot(121), plt.imshow(pixData)
-    plt.subplot(122), plt.imshow(mask)
-    plt.show()
-def testOQ():
+    print("MMCQ Time cost: {0}".format(time.process_time() - start))
+    return themes
+    # imgPalette(pixDatas, themes)
+def testOQ(pixDatas, maxColor):
+    start  = time.process_time()
+    themes = list(map(lambda d: OQ(d, maxColor).quantize(), pixDatas))
+    print("OQ Time cost: {0}".format(time.process_time() - start))
+    return themes
+    # imgPalette(pixDatas, themes)
+def testKmeans(pixDatas, maxColor, diy=False):
+    start = time.process_time()
+    themes = list(map(lambda d: KMeans(d, maxColor, diy).quantize(), pixDatas))
+    print("KMeans Time cost: {0}".format(time.process_time() - start))
+    return themes
+def vs():
     imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
     pixDatas = list(map(getPixData, imgs))
     maxColor = 7
+    themes = [testMMCQ(pixDatas, maxColor), testOQ(pixDatas, maxColor), testKmeans(pixDatas, maxColor)]
+    imgPalette(pixDatas, themes, ["MMCQ Palette", "OQ Palette", "KMeans Palette"])
 
-    start  = time.process_time()
-    themes = list(map(lambda d: OQ(d, maxColor).quantize(), pixDatas))
-    print("Time cost: {0}".format(time.process_time() - start))
-    imgPalette(pixDatas, themes)
+def kmvs():
+    imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
+    pixDatas = list(map(getPixData, imgs))
+    maxColor = 7
+    themes = [testKmeans(pixDatas, maxColor), testKmeans(pixDatas, maxColor, True)]
+    imgPalette(pixDatas, themes, ["KMeans Palette", "KMeans DIY"])
+
+
 if __name__ == '__main__':
     # testColorSpace()
     # testMMCQ()
-    testOQ()
+    kmvs()
