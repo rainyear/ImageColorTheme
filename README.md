@@ -1,7 +1,7 @@
 ImageColorTheme
 ---
 
-Extract Color Themes from Images
+[Extract Color Themes from Images](http://blog.rainy.im/2015/11/25/extract-color-themes-from-images/)
 
 ### `pixData`
 
