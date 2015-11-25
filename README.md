@@ -29,3 +29,6 @@ km = KMeans(pixData, maxColor)
 theme = km.quantize()
 ```
 
+### Results
+
+![](imgs/mmcq_vs_kmeans.png)
