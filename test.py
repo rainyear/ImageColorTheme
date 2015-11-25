@@ -107,9 +107,9 @@ def testOQ(pixDatas, maxColor):
     print("OQ Time cost: {0}".format(time.process_time() - start))
     return themes
     # imgPalette(pixDatas, themes)
-def testKmeans(pixDatas, maxColor, diy=False):
+def testKmeans(pixDatas, maxColor, skl=True):
     start = time.process_time()
-    themes = list(map(lambda d: KMeans(d, maxColor, diy).quantize(), pixDatas))
+    themes = list(map(lambda d: KMeans(d, maxColor, skl).quantize(), pixDatas))
     print("KMeans Time cost: {0}".format(time.process_time() - start))
     return themes
 def vs():
@@ -123,11 +123,13 @@ def kmvs():
     imgs = map(lambda i: 'imgs/photo%s.jpg' % i, range(1,5))
     pixDatas = list(map(getPixData, imgs))
     maxColor = 7
-    themes = [testKmeans(pixDatas, maxColor), testKmeans(pixDatas, maxColor, True)]
+    themes = [testKmeans(pixDatas, maxColor), testKmeans(pixDatas, maxColor, False)]
     imgPalette(pixDatas, themes, ["KMeans Palette", "KMeans DIY"])
 
 
 if __name__ == '__main__':
     # testColorSpace()
     # testMMCQ()
-    kmvs()
+    # kmvs()
+    print(testKmeans([getPixData()], 7, False))
+    print(testKmeans([getPixData()], 7))
