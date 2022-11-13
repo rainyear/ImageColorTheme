@@ -97,8 +97,8 @@ class MMCQ(object):
         npixs = 0
         if vbox.mAxis == 0:
             # Red axis is largest
-            plane = 0
             for r in range(vbox.r1, vbox.r2+1):
+                plane = 0
                 for g in range(vbox.g1, vbox.g2+1):
                     for b in range(vbox.b1, vbox.b2+1):
                         h = vbox.histo[self.getColorIndex(r, g, b)]
